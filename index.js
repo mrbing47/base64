@@ -233,3 +233,13 @@ function to94Base(number) {
 
 	return result;
 }
+
+// @section This section is useful when a batch script is written.
+const args = process.argv;
+
+if (args[2] === "encode") {
+	console.log("\n" + encode64Base(args[3]));
+}
+if (args[2] === "decode") {
+	console.log("\n" + decode64Base(args[3]));
+}
