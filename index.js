@@ -239,11 +239,8 @@ function to94Base(number) {
 // @section This section is useful when a batch script is written.
 const args = process.argv;
 
-console.log(args);
-
 if (args[2] === "encode") {
 	console.log("\n" + encode64Base(args[3]) + "\n");
-	//console.log(encode64Base("https://drive.google.com/open?id=1NHOkOQrD-x7gnxk42OTIJG9cwfCFSqu5"));
 }
 if (args[2] === "decode") {
 	console.log("\n" + decode64Base(args[3]));
