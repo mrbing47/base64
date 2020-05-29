@@ -50,7 +50,7 @@ function base64EncoderMapper(value = 0, urlSafe = false) {
 		else return "+";
 	}
 	if (input == 63) {
-		if (urlSafe) return "/";
+		if (!urlSafe) return "/";
 		else return "_";
 	}
 }
