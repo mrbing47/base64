@@ -3,9 +3,19 @@ setlocal
 
 set STR=%1
 
-if [%STR%] == []    echo "Provide a String to decode!!!"
+:loop
 
-if NOT [%STR%] == [] (
+if "%2"=="" goto continue
+
+set STR=%STR%=%2
+shift
+goto loop
+
+:continue
+
+if "%STR%" == ""    echo "Provide a String to decode!!!"
+
+if NOT "%STR%" == "" (
     cd /d "path to project"
-    node index decode %STR%
+    node index decode "%STR%"
 )
