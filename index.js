@@ -5,24 +5,29 @@
 	@param (urlSafe) is encoding URL-Safe?
 	@return (result) the Binary string with the length%6 = 0.
  */
+
 function asciiBinaryEncoder(string = "") {
 	let input = string;
 
 	if (typeof string !== "string") input = string.toString();
 
 	let result = "";
-	for (const i of input) {
-		var temp = i.charCodeAt(0);
-		temp = temp.toString(2);
+	for (const char of input) {
+		const binary = char.charCodeAt(0).toString(2);
+		const zeroPadding = Array(8 - binary.length)
+			.fill(0)
+			.join("");
 
-		for (let i = temp.length; i < 8; i++) {
-			temp = "0" + temp;
-		}
-
-		result += temp;
+		result += zeroPadding + binary;
 	}
 
-	if (result.length % 6 != 0) for (let i = result.length % 6; i < 6; i++) result += "0";
+	if (result.length % 6 != 0) {
+		const zeroPadding = Array(6 - (result.length % 6))
+			.fill(0)
+			.join("");
+
+		result += zeroPadding;
+	}
 
 	return result;
 }
@@ -37,12 +42,15 @@ function base64EncoderMapper(value = 0, urlSafe = false) {
 	const input = parseInt(value);
 
 	if (input < 26) {
-		return String.fromCharCode(65 + input);
+		// A-Z
+		return String.fromCharCode(input + 65);
 	}
-	if (input > 25 && input < 52) {
-		return String.fromCharCode(71 + input);
+	if (input >= 26 && input < 52) {
+		// a-z
+		return String.fromCharCode(input + 71);
 	}
-	if (input > 51 && input < 62) {
+	if (input >= 52 && input < 62) {
+		// 0-9
 		return String.fromCharCode(input - 4);
 	}
 	if (input == 62) {
@@ -50,12 +58,12 @@ function base64EncoderMapper(value = 0, urlSafe = false) {
 		else return "+";
 	}
 	if (input == 63) {
-		if (!urlSafe) return "/";
-		else return "_";
+		if (urlSafe) return "_";
+		else return "/";
 	}
 }
 
-/* 
+/*
 	* Call this Function to encode a String in 64Base.
 	@param (value) the string which you want to encode.
 	@param (urlSafe) is encoding URL-Safe?
@@ -79,11 +87,12 @@ function encode64Base(string = "", urlSafe = false) {
 		result += asciiValue;
 	}
 
-	if (result.length % 4 != 0)
-		for (let i = result.length % 4; i < 4; i++) {
-			if (urlSafe) result += "*";
-			else result += "=";
-		}
+	if (result.length % 4 != 0) {
+		const padding = Array(4 - (result.length % 4))
+			.fill(urlSafe ? "*" : "=")
+			.join("");
+		result += padding;
+	}
 
 	return result;
 }
@@ -158,7 +167,7 @@ function asciiBinaryDecoder(string = "", urlSafe = false) {
 	return result;
 }
 
-/* 
+/*
 	* Call this Function to decode a 64Base string.
 	@param (value) the string which you want to decode.
 	@param (urlSafe) is input string URL-Safe?
@@ -171,7 +180,7 @@ function decode64Base(string = "", urlSafe = false) {
 
 	let result = "";
 
-	console.log("input str => ", input);
+	// console.log("input str => ", input);
 
 	const binaryString = asciiBinaryDecoder(input, urlSafe);
 	const binaryLength = binaryString.length;
@@ -189,8 +198,10 @@ function decode64Base(string = "", urlSafe = false) {
 }
 //@section
 
-/*
-	* This is a 64base converter, it converts a Decimal number to a 64Base number. This is not same as the 64Base Encoder, it just converts number to a URL safe number.
+/**
+ *
+ *	* This is a 64base converter, it converts a Decimal number to a 64Base number.
+ * 	* This is not same as the 64Base Encoder, it just converts number to a URL safe number.
 	@param (number) the number which has to converted.
 	@return (result) The URL-Safe 64Base number.
  */
@@ -201,9 +212,11 @@ function to64Base(number) {
 		let temp = parseInt(number % 64);
 
 		if (temp > 9) {
-			if (temp < 36) result = String.fromCharCode(temp + 87) + result;
+			if (temp < 36)
+				result = String.fromCharCode(temp + 87) + result;
 			else {
-				if (temp < 62) result = String.fromCharCode(temp + 29) + result;
+				if (temp < 62)
+					result = String.fromCharCode(temp + 29) + result;
 				else result = String.fromCharCode(temp - 20) + result;
 			}
 		} else result = temp + result;
@@ -216,31 +229,11 @@ function to64Base(number) {
 	return result;
 }
 
-/* 
-	* This is a 94Base converter, it converts a Decimal number to 94Base number.
-	@param (number) The number which has to be converted.
-	@return (result) the converted number which won't be URL-Safe.
-*/
-function to94Base(number) {
-	let result = "";
-
-	while (number) {
-		let temp = parseInt(number % 94);
-		result = String.fromCharCode(temp + 33) + result;
-
-		number = parseInt(number / 94);
-	}
-
-	if (result === "") result = "0";
-
-	return result;
-}
-
 // @section This section is useful when a batch script is written.
 const args = process.argv;
 
 if (args[2] === "encode") {
-	console.log("\n" + encode64Base(args[3]) + "\n");
+	console.log("\n" + encode64Base(args[3]));
 }
 if (args[2] === "decode") {
 	console.log("\n" + decode64Base(args[3]));

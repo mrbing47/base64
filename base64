@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Reset
+Color_Off=''
+
+# Regular Colors
+Red=''
+
+if [[ -t 1 ]]; then
+	# Reset
+	Color_Off='\033[0m' # Text Reset
+
+	# Regular Colors
+	Red='\033[0;31m'
+fi
+
+error() {
+	echo -e "${Red}ERROR:${Color_Off}\t$*" >&2
+	exit 1
+}
+
+if [[ "$#" -ne 2 ]]; then
+	error "Needs an instruction and a string to encode/decode."
+fi
+
+if [[ "$1" != "encode" && "$1" != "decode" ]]; then
+	error "Unknown method requested."
+fi
+
+project_dir="${BASE64:-./}"
+
+node "$project_dir" "$@"

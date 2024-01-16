@@ -1,0 +1,1 @@
+function fromAsciiTo8BitBinary() {}

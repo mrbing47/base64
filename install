@@ -1,0 +1,415 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEBUG=0
+UPDATE=0
+YES=0
+
+for arg; do
+	case $arg in
+
+	debug)
+		DEBUG=1
+		;;
+
+	update)
+		UPDATE=1
+		;;
+	yes)
+		YES=1
+		;;
+
+	esac
+done
+
+# Reset
+Color_Off=''
+
+# Regular Colors
+Red=''
+Green=''
+Yellow=''
+Blue=''
+
+# Bold
+Bold_White=''
+
+# Background
+Back_Yellow=''
+Back_Red=''
+
+# Icons
+tick=""
+
+if [[ -t 1 ]]; then
+	# Reset
+	Color_Off='\033[0m' # Text Reset
+
+	# Regular Colors
+	Red='\033[0;31m'
+	Green='\033[0;32m'
+	Yellow='\033[0;33m'
+	Blue='\033[0;34m'
+
+	# Bold
+	Bold_White='\033[1m' # Bold White
+
+	# Background
+	Back_Yellow='\033[1;43m'
+	Back_Red='\033[0;41m'
+
+	# Icons
+	tick="\xE2\x9C\x94"
+fi
+
+error() {
+	echo -e "${Red}ERROR:${Color_Off}\t$*" >&2
+	exit 1
+}
+
+info() {
+	echo -e "${Blue}INFO:${Color_Off}\t$*"
+}
+
+bold() {
+	echo -e "\t${Bold_White}$* ${Color_Off}"
+}
+
+warn() {
+	echo -e "${Yellow}WARN:${Color_Off}\t$*"
+}
+
+debug() {
+	if [[ DEBUG -eq 1 ]]; then
+		if [[ "$1" == "--unsafe" ]]; then
+			echo -e "${Back_Yellow}DEBUG\t${Color_Off}${Back_Red}${*: -1}${Color_Off}"
+		else
+			echo -e "${Back_Yellow}DEBUG\t${Color_Off}$*"
+		fi
+	fi
+}
+
+success() {
+	echo -e "${Green}${tick}\t$* ${Color_Off}"
+}
+
+tildify() {
+	if [[ $1 = $HOME/* ]]; then
+		local replacement=\~
+
+		echo "${1/$HOME/$replacement}"
+	else
+		echo "$1"
+	fi
+}
+
+repeat() {
+	local start=1
+	local end=${1:-80}
+	local str="${2:-=}"
+	local range=$(seq $start $end)
+
+	for _ in $range; do
+		echo -n "$str"
+	done
+	echo
+}
+
+ask() {
+	if [[ $YES -eq 0 ]]; then
+		if [[ "$1" == "-n" ]]; then
+			echo
+			shift 1
+		fi
+		echo -ne "${Red}?${Color_Off}\t$* [Y/n]: "
+		read -r input </dev/tty
+
+		echo -ne "\033[1A\033[K\r"
+		echo -ne "${Green}${tick}${Color_Off}\t$* [Y/n]: "
+		if [[ -z "$input" || "$input" =~ ^[Yy]$ ]]; then
+			echo -e "${Green}Yes${Color_Off}"
+		else
+			echo -e "${Red}No${Color_Off}"
+		fi
+
+		[[ -z "$input" || "$input" =~ ^[Yy]$ ]]
+	fi
+}
+
+command -v bun >/dev/null ||
+	error "bun is required to run $project_name"
+
+command -v unzip >/dev/null ||
+	error "unzip is required for installation of $project_name"
+
+# Github information
+git_user=mrbing47
+project_name=base64
+head_name=master
+
+# Folder configuration for installation and update.
+root_dir=$HOME/.$project_name
+bin_dir=$root_dir/
+
+update_folder=update
+
+if [[ $UPDATE -eq 1 ]]; then
+	if [[ (! -d "$root_dir") || $(find "$root_dir" -maxdepth 1 -mindepth 1 | wc -l) -eq 0 ]]; then
+		error "Please install $project_name before updating"
+	fi
+
+	install_dir=$root_dir/$update_folder
+else
+	install_dir=$root_dir
+fi
+
+tildify_install_dir=$(tildify "$install_dir")
+
+download_file=$install_dir/$project_name.zip
+project_main=$install_dir/$project_name-$head_name
+
+if [[ ! -d $install_dir ]]; then
+	debug "Creating folder $tildify_install_dir"
+	mkdir -p "$install_dir" ||
+		error "Failed to create install directory \"$install_dir\""
+
+elif [[ $(find "$install_dir" -maxdepth 1 -mindepth 1 | wc -l) -gt 0 ]]; then
+	warn "Directory \"$tildify_install_dir\" is not empty"
+
+	if ask "Do you wish to delete the content of \"$tildify_install_dir\" to continue?"; then
+		warn "Deleting all the files and folders in \"$tildify_install_dir\"\n"
+		rm -r ${install_dir:?}/* &>/dev/null || error "Failed to delete items inside \"$install_dir\""
+
+	fi
+fi
+
+info "Downloading the repository"
+
+# Starting the download in the background
+(
+	curl -fsLo "$download_file" "https://github.com/$git_user/$project_name/archive/refs/heads/$head_name.zip" ||
+		error "Failed to download the Github repository \"$git_user/$project_name\""
+) &
+
+# Process ID of the above subprocess
+curl_pid=$!
+
+delay=0.1
+spinstr='|/-\'
+
+while ps -p $curl_pid &>/dev/null; do
+	temp=${spinstr#?}
+	echo -ne "\t[${spinstr:0:1}]\r"
+	spinstr=$temp${spinstr%"$temp"}
+
+	sleep $delay
+done
+
+# Clears the current line
+printf "\033[K"
+
+# Checks if $curl_pid exited with non-zero exit code, if yes, exit the process.
+wait $curl_pid
+
+debug "Extracting the repository"
+unzip -oqd "$install_dir/" "$download_file" &>/dev/null ||
+	error "Failed to extract the zip file"
+
+debug "Refactoring the files"
+if ! mv ${project_main:?}/* "$install_dir/" &>/dev/null; then
+	if [[ $UPDATE -eq 1 ]]; then
+		echo
+		warn "Directory \"$tildify_install_dir\" contains conflicting items"
+		warn "Make sure \"$tildify_install_dir\" is empty before update\n"
+		error "Failed to move the content"
+	else
+		echo
+		warn "$project_name might already be installed"
+		warn "If you are trying to update, use \"-s update\" at the end of install command to update $project_name"
+		warn "If you are not, make sure \"$tildify_install_dir\" is empty before installation\n"
+		error "Failed to move the content"
+	fi
+
+fi
+
+debug "Removing the temporary files"
+rm -r "$project_main" "$download_file" &>/dev/null ||
+	warn "Failed to deleted temporary files"
+
+# If the user has set the command to update, the following code will be executed
+if [[ $UPDATE -eq 1 ]]; then
+	debug "== UPDATE =="
+
+	if ask -n "Do you wish to delete the content of \"$(tildify "$root_dir")\" to continue?"; then
+		warn "Deleting old files"
+		find "$root_dir" ! -name $update_folder -maxdepth 1 -mindepth 1 -exec rm -r {} + ||
+			error "Failed to delete old files"
+	fi
+
+	debug "Moving updated files to root"
+	mv ${install_dir:?}/* "$root_dir" &>/dev/null ||
+		error "Failed to move the content"
+
+	debug "Deleting update folder"
+	rm -r "$install_dir" ||
+		warn "Failed to delete the temporary folder"
+
+fi
+
+echo
+success "Successfully $([[ $UPDATE -eq 1 ]] && echo -n "updated" || echo -n "installed") $project_name"
+
+if [[ $UPDATE -eq 1 ]]; then
+	exit 0
+fi
+
+echo
+
+package_json=$root_dir/package.json
+if [[ -e $package_json ]]; then
+	info "Installing node modules"
+	echo
+
+	cd "$root_dir"
+	bun install
+fi
+
+debug "Setting up the \$PATH"
+
+case $(basename "$SHELL") in
+fish)
+
+	commands=(
+		"set --export PATH $bin_dir \$PATH"
+	)
+
+	fish_config=$HOME/.config/fish/config.fish
+	tilde_fish_config=$(tildify "$fish_config")
+
+	if [[ -w $fish_config ]]; then
+		{
+			echo
+			repeat 50 "#"
+			echo -e "##\t$project_name"
+
+			for command in "${commands[@]}"; do
+				echo "$command"
+			done
+
+			repeat 50 "#"
+
+		} >>"$fish_config"
+
+		debug "Added \"$(tildify "$bin_dir")\" to \$PATH in \"$tilde_fish_config\""
+
+		refresh_command="source $tilde_fish_config"
+	else
+		echo "Manually add the directory to $tilde_fish_config (or similar):"
+
+		for command in "${commands[@]}"; do
+			bold "  $command"
+		done
+	fi
+	;;
+zsh)
+
+	commands=(
+		"export PATH=\"$bin_dir:\$PATH\""
+	)
+
+	zsh_config=$HOME/.zshrc
+	tilde_zsh_config=$(tildify "$zsh_config")
+
+	if [[ -w $zsh_config ]]; then
+		{
+			echo
+			repeat 50 "#"
+			echo -e "##\t$project_name"
+
+			for command in "${commands[@]}"; do
+				echo "$command"
+			done
+
+			repeat 50 "#"
+
+		} >>"$zsh_config"
+
+		debug "Added \"$(tildify "$bin_dir")\" to \$PATH in \"$tilde_zsh_config\""
+
+		refresh_command="exec $SHELL"
+	else
+		echo "Manually add the directory to $tilde_zsh_config (or similar):"
+
+		for command in "${commands[@]}"; do
+			bold "$command"
+		done
+	fi
+	;;
+bash)
+
+	commands=(
+		"export PATH=$bin_dir:\$PATH"
+	)
+
+	bash_configs=(
+		"$HOME/.bashrc"
+		"$HOME/.bash_profile"
+	)
+
+	if [[ ${XDG_CONFIG_HOME:-} ]]; then
+		bash_configs+=(
+			"$XDG_CONFIG_HOME/.bash_profile"
+			"$XDG_CONFIG_HOME/.bashrc"
+			"$XDG_CONFIG_HOME/bash_profile"
+			"$XDG_CONFIG_HOME/bashrc"
+		)
+	fi
+
+	set_manually=true
+	for bash_config in "${bash_configs[@]}"; do
+		tilde_bash_config=$(tildify "$bash_config")
+
+		if [[ -w $bash_config ]]; then
+			{
+				echo
+				repeat 50 "#"
+				echo -e "##\t$project_name"
+
+				for command in "${commands[@]}"; do
+					echo "$command"
+				done
+
+				repeat 50 "#"
+
+			} >>"$bash_config"
+
+			debug "Added \"$(tildify "$bin_dir")\" to \$PATH in \"$tilde_bash_config\""
+
+			refresh_command="source $bash_config"
+			set_manually=false
+			break
+		fi
+	done
+
+	if [[ $set_manually == true ]]; then
+		echo "Manually add the directory to $tilde_bash_config (or similar):"
+
+		for command in "${commands[@]}"; do
+			bold "$command"
+		done
+	fi
+	;;
+*)
+	echo 'Manually add the directory to ~/.bashrc (or similar):'
+	bold "export PATH=\"$bin_dir:\$PATH\""
+	;;
+esac
+
+echo
+
+if [[ $refresh_command ]]; then
+	info "To get started, run:"
+	bold "$refresh_command"
+fi
+
+exit 0
