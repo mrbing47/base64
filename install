@@ -148,6 +148,7 @@ project_name=base64
 head_name=master
 
 # Folder configuration for installation and update.
+command_name="b64"
 root_dir=$HOME/.$project_name
 bin_dir=$root_dir/
 
@@ -174,8 +175,8 @@ if [[ ! -d $install_dir ]]; then
 		error "Failed to create install directory \"$install_dir\""
 
 elif [[ $(find "$install_dir" -maxdepth 1 -mindepth 1 | wc -l) -gt 0 ]]; then
+	echo
 	warn "Directory \"$tildify_install_dir\" is not empty"
-
 	if ask "Do you wish to delete the content of \"$tildify_install_dir\" to continue?"; then
 		warn "Deleting all the files and folders in \"$tildify_install_dir\"\n"
 		rm -r ${install_dir:?}/* &>/dev/null || error "Failed to delete items inside \"$install_dir\""
@@ -255,6 +256,9 @@ if [[ $UPDATE -eq 1 ]]; then
 		warn "Failed to delete the temporary folder"
 
 fi
+
+debug "Setting execution permission"
+chmod +x "$bin_dir/$command_name" || error "Failed to add permission to $project_name executable."
 
 echo
 success "Successfully $([[ $UPDATE -eq 1 ]] && echo -n "updated" || echo -n "installed") $project_name"
