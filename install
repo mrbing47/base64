@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+####################################################################
+# Flags check
+
 DEBUG=0
 UPDATE=0
 YES=0
@@ -21,6 +24,9 @@ for arg; do
 
 	esac
 done
+
+####################################################################
+# Color set
 
 # Reset
 Color_Off=''
@@ -61,6 +67,9 @@ if [[ -t 1 ]]; then
 	# Icons
 	tick="\xE2\x9C\x94"
 fi
+
+####################################################################
+# Functions
 
 error() {
 	echo -e "${Red}ERROR:${Color_Off}\t$*" >&2
@@ -136,24 +145,31 @@ ask() {
 	fi
 }
 
-command -v bun >/dev/null ||
+####################################################################
+# Requirements check
+
+command -v node >/dev/null ||
 	error "bun is required to run $project_name"
 
 command -v unzip >/dev/null ||
 	error "unzip is required for installation of $project_name"
 
+####################################################################
 # Github information
+
 git_user=mrbing47
 project_name=base64
 head_name=master
 
+####################################################################
 # Folder configuration for installation and update.
+
 command_name="b64"
 root_dir=$HOME/.$project_name
 bin_dir=$root_dir/
-
 update_folder=update
 
+####################################################################
 if [[ $UPDATE -eq 1 ]]; then
 	if [[ (! -d "$root_dir") || $(find "$root_dir" -maxdepth 1 -mindepth 1 | wc -l) -eq 0 ]]; then
 		error "Please install $project_name before updating"
