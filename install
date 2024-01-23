@@ -164,8 +164,9 @@ head_name=master
 ####################################################################
 # Folder configuration for installation and update.
 
+project_env=BASE64
 command_name="b64"
-root_dir=$HOME/.$project_name
+root_dir=${!project_env:-$HOME/.$project_name}
 bin_dir=$root_dir/
 update_folder=update
 
@@ -301,6 +302,7 @@ fish)
 
 	commands=(
 		"set --export PATH $bin_dir \$PATH"
+		"set --export $project_env $bin_dir"
 	)
 
 	fish_config=$HOME/.config/fish/config.fish
@@ -335,6 +337,7 @@ zsh)
 
 	commands=(
 		"export PATH=\"$bin_dir:\$PATH\""
+		"export $project_env=\"$bin_dir\""
 	)
 
 	zsh_config=$HOME/.zshrc
@@ -369,6 +372,7 @@ bash)
 
 	commands=(
 		"export PATH=$bin_dir:\$PATH"
+		"export $project_env=$bin_dir"
 	)
 
 	bash_configs=(
@@ -422,6 +426,7 @@ bash)
 *)
 	echo 'Manually add the directory to ~/.bashrc (or similar):'
 	bold "export PATH=\"$bin_dir:\$PATH\""
+	bold "export $project_env=\"$bin_dir\""
 	;;
 esac
 
